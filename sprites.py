@@ -3,6 +3,8 @@ from config import *
 import math
 import random
 
+pygame.font.init()
+font = pygame.font.SysFont('Tahoma', 15)
 
 class Spritesheet:
     def __init__(self, file):
@@ -37,19 +39,20 @@ class Player(pygame.sprite.Sprite):
         self.animation_loop = 0
 
         # the default down image is the 12th sprite and each is 32*32
-        self.image = self.character_spritesheet.get_sprite(32*12, 0,
-                                                           self.width,
-                                                           self.height)
+        self.image = self.character_spritesheet.get_sprite(32*12, 0, self.width, self.height)
 
         self.rect = self.image.get_rect()
         self.rect.x = self.x
         self.rect.y = self.y
 
+        self.pos = self.x, self.y
+
     def update(self):
         self.movement()
         self.animate()
+        # self.approach_block()
         self.collide_enemy()
-
+        
         self.rect.x += self.x_change
         self.rect.y += self.y_change
 
@@ -131,7 +134,7 @@ class Player(pygame.sprite.Sprite):
                 self.animation_loop += 0.1
                 if self.animation_loop >= 4:
                     self.animation_loop = 0
-
+        
     def collide_enemy(self):
         hits = pygame.sprite.spritecollide(self, self.game.enemies, False)
         if hits:
@@ -159,9 +162,7 @@ class Enemy(pygame.sprite.Sprite):
         self.movement_loop = 0
         self.max_travel = random.randint(TILESIZE, TILESIZE*2)
 
-        self.image = self.enemy_spritesheet.get_sprite(32*12, 0,
-                                                        self.width,
-                                                        self.height)
+        self.image = self.enemy_spritesheet.get_sprite(32*12, 0, self.width, self.height)
         self.image.set_colorkey(WHITE)
 
         self.rect = self.image.get_rect()
@@ -242,9 +243,7 @@ class Attack(pygame.sprite.Sprite):
 
         self.animation_loop = 0
 
-        self.image = self.attack_spritesheet.get_sprite(0, 0,
-                                                        self.width,
-                                                        self.height)
+        self.image = self.attack_spritesheet.get_sprite(0, 0, self.width, self.height)
         
         self.rect = self.image.get_rect()
         self.rect.x = self.x
@@ -255,7 +254,7 @@ class Attack(pygame.sprite.Sprite):
         self.collide()
 
     def collide(self):
-        hits = pygame.sprite.spritecollide(self, self.game.enemies, True)
+        pygame.sprite.spritecollide(self, self.game.enemies, True)
 
     def animate(self):
         direction = self.game.player.facing
@@ -305,3 +304,88 @@ class Attack(pygame.sprite.Sprite):
             self.animation_loop += 0.5
             if self.animation_loop >= 4:
                 self.kill()
+
+class Projectile(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self.game = game
+        self._layer = ATTACK_LAYER
+        self.groups = self.game.all_sprites, self.game.blocks
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.width = TILESIZE
+        self.height = TILESIZE
+
+        self.x_change = 0
+        self.y_change = 0
+
+        self.x = x
+        self.y = y
+
+        self.image = pygame.image.load('images/normal_projectile.png')
+
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+        self.velocity = 5
+        
+        mx, my = pygame.mouse.get_pos()
+        dx, dy = mx - self.x, my - self.y
+        len = math.hypot(dx, dy)
+        self.dx = dx / len
+        self.dy = dy / len
+        angle = math.degrees(math.atan2(-dy, dx)) - 90
+        self.image = pygame.transform.rotate(self.image, angle)
+
+    def update(self):
+        self.move()
+        self.collide()
+
+        self.rect.x += self.x_change
+        self.rect.y += self.y_change
+
+        self.x_change = 0
+        self.y_change = 0
+
+    def collide(self):
+        pygame.sprite.spritecollide(self, self.game.enemies, True)
+
+    def move(self):
+        self.x_change = self.dx * self.velocity
+        self.y_change = self.dy * self.velocity
+
+
+class InteractiveObject(pygame.sprite.Sprite):
+    def __init__(self, game, x, y, type):
+        self.game = game
+        self.type = type
+        self._layer = OBJECT_LAYER
+        self.groups = self.game.all_sprites, self.game.blocks
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.intobject_spritesheet = Spritesheet('images/sign.png')
+
+        self.x = x * TILESIZE
+        self.y = y * TILESIZE
+        self.width = TILESIZE
+        self.height = TILESIZE
+
+        self.image = self.intobject_spritesheet.get_sprite(0, 0, self.width, self.height)
+
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+    def update(self):
+        self.change_image()
+        # self.interact()
+
+    def change_image(self):
+        if self.type == 'sign':
+            self.image = self.intobject_spritesheet.get_sprite(0, 0, self.width, self.height)
+        
+    # def interact(self):
+    #     if self.rect.colliderect(self.game.player.rect):
+    #         self.nearby = True
+    #         self.act = False
+    #         text = font.render('e to interact', False, (WHITE))
+    #         self.game.screen.blit(text, (self.x - 25, self.y - 16))
+    #         pygame.display.flip()

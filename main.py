@@ -1,8 +1,6 @@
 # For my CodeJam project, I decided to make a simple game using pygame.
-# Even though I wanted to add projectiles and have the enemies follow the
-# player, I'm temporarily shying away from it (the math library scares me...)
-# Maybe I'll try to make a better game in the future when I learn more.
-
+# The main purpose was to test out some "generic video game stuff" so I can
+# hopefully repurpose some of it for the future.
 import pygame
 import pytmx
 import sys
@@ -35,6 +33,8 @@ class Game:
         self.enemy1 = Enemy(self, 6, 11)
         self.enemy2 = Enemy(self, 11, 4)
 
+        self.sign = InteractiveObject(self, 8, 1.5, 'sign')
+
     def events(self):
         # game loop events
         for event in pygame.event.get():
@@ -51,6 +51,8 @@ class Game:
                         Attack(self, self.player.rect.x, self.player.rect.y - TILESIZE)
                     elif self.player.facing == 'down':
                         Attack(self, self.player.rect.x, self.player.rect.y + TILESIZE)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                self.bullets.append(Projectile(self, self.player.rect.x, self.player.rect.y))
 
     def update(self):
         # game loop updates
@@ -76,6 +78,14 @@ class Game:
         self.enemy2.rect.clamp_ip(barrier)
         self.enemy2_x, self.enemy_y = (0, 0)
 
+        self.bullets = []
+
+        for bullet in self.bullets:       
+            if 0 < bullet.x < 640 and 0 < bullet.y < 480:
+                bullet.move()
+            else:
+                self.bullets.pop(self.bullets.index(bullet))
+
         pygame.display.update()
 
     def main(self):
@@ -100,6 +110,5 @@ game.new()
 while game.running:
     game.main()
     game.game_over()
-
 pygame.quit()
 sys.exit()
